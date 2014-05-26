@@ -1,22 +1,21 @@
 (ns gezwitscher.core
-  (:require [clojure.data.json :as json]
-            [ceres.warehouse :as warehouse]
-            [ceres.curator :as curator])
+  (:require [clojure.data.json :as json])
   (:import [twitter4j StatusListener TwitterStream TwitterStreamFactory FilterQuery]
            [twitter4j.conf ConfigurationBuilder Configuration]
            [twitter4j.json DataObjectFactory]))
 
 (set! *warn-on-reflection* true)
 
-(def twitter-creds
-  {:consumer-key "RfwfMlqMXqWnIofQ8QjU5TpSX"
-   :consumer-secret "tXF0cJM0ltTyMw1363cNWAkflbgzg0LBeFrutFer7E9ksSZaJz"
-   :access-token "108654757-1jR2QjJj3gZINhT7aTdQGKX0pKf3yIKyQGSu322w"
-   :access-token-secret "nbEkOMtOM6Ped8xozXHo6j2sI82k1uH1yOyZPMzuoOcng"})
-
+;; example state
+(def twitter-state
+  (atom
+   {:credentials {:consumer-key "****"
+                  :consumer-secret "****"
+                  :access-token "****"
+                  :access-token-secret "****"}}))
 
 (defn- build-config
-  "Twitter stream config"
+  "Twitter stream configuration"
   ^Configuration [{:keys [consumer-key consumer-secret access-token access-token-secret]}]
   (let [cb (ConfigurationBuilder.)]
     (.setDebugEnabled cb true)
@@ -27,14 +26,13 @@
     (.setJSONStoreEnabled cb true)
     (.build cb)))
 
-
 (defn- status-listener
-  "Stream handler, currently prints status of a new tweet"
+  "Stream handler, applies given function to newly retrieved status"
   [func]
   (proxy [StatusListener] []
     (onStatus [^twitter4j.Status status]
-      (let [tweet (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
-        (func tweet)
+      (let [parsed-status (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
+        (func parsed-status)))
     (onException [^java.lang.Exception e] (.printStackTrace e))
     (onDeletionNotice [^twitter4j.StatusDeletionNotice statusDeletionNotice] ())
     (onScrubGeo [userId upToStatusId] ())
@@ -43,15 +41,15 @@
 
 (defn- get-twitter-stream-factory
   "Creates the twitter factory for the stream object"
-  []
-  (let [factory (TwitterStreamFactory. (build-config twitter-creds))]
+  [state]
+  (let [factory (TwitterStreamFactory. (build-config (:credentials state)))]
     (.getInstance factory)))
 
 
-(defn do-filter-stream
+(defn start-filter-stream
   "Starts streaming, following given ids and tracking given keywords"
-  [ids keywords]
-  (let [filter-query (FilterQuery. 0 (long-array ids) (into-array String keywords))
+  [state]
+  (let [filter-query (FilterQuery. 0 (long-array (:ids state)) (into-array String (:keywords state)))
         stream (get-twitter-stream-factory)]
     (.addListener stream (status-listener))
     (.filter stream filter-query)))
