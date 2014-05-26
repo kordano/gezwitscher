@@ -4,7 +4,7 @@ A simple wrapper around twitter4j framework for the Twitter API, when it's done.
 
 ## Usage
 
-In planning ...
+at planning stage
 
 ## License
 
