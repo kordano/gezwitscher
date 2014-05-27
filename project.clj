@@ -1,4 +1,4 @@
-(defproject gezwitscher "0.1.0-SNAPSHOT"
+(defproject gezwitscher "0.1.0"
 
   :description "Basic wrapper around the good twitter4j framework for the twitter api"
 
