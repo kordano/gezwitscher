@@ -6,15 +6,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; example state
-(def twitter-state
-  (atom
-   {:credentials {:consumer-key "****"
-                  :consumer-secret "****"
-                  :access-token "****"
-                  :access-token-secret "****"}}))
 
-(defn- build-config
+(defn build-config
   "Twitter stream configuration"
   ^Configuration [{:keys [consumer-key consumer-secret access-token access-token-secret]}]
   (let [cb (ConfigurationBuilder.)]
@@ -25,6 +18,7 @@
     (.setOAuthAccessTokenSecret cb access-token-secret)
     (.setJSONStoreEnabled cb true)
     (.build cb)))
+
 
 (defn- status-listener
   "Stream handler, applies given function to newly retrieved status"
@@ -49,7 +43,10 @@
 (defn start-filter-stream
   "Starts streaming, following given ids and tracking given keywords"
   [state]
-  (let [filter-query (FilterQuery. 0 (long-array (:ids state)) (into-array String (:keywords state)))
-        stream (get-twitter-stream-factory)]
-    (.addListener stream (status-listener))
-    (.filter stream filter-query)))
+  (let [filter-query (FilterQuery. 0 (long-array (:follow state)) (into-array String (:track state)))
+        stream (get-twitter-stream-factory state)]
+    (.addListener stream (status-listener (:handler state)))
+    (.filter stream filter-query)
+    (fn [] (do
+            (.shutdown stream)
+            (println "Streaming stopped!")))))
