@@ -6,7 +6,13 @@ A basic wrapper around the java [twitter4j](http://twitter4j.org/en/index.html) 
 
 To access the Twitter API, Authentification is required. Refer to the [documentation](https://dev.twitter.com/docs/auth/using-oauth) for aquiring the credentials.
 
-First set the overall configuration
+To include Gezwitscher in your project, add the following to your project.clj dependencies:
+
+```clojure
+[gezwitscher "0.1.0"]
+```
+
+Set the overall configuration
 
 ```clojure
 (ns example.core
