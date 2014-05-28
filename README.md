@@ -105,7 +105,7 @@ Set the credentials configuration again as above
 Create the timeline function and fetch a user timeline
 
 ```clojure
-(def timeline (create-user-timeline-fn (:credentials @query-state)))
+(def timeline (create-user-timeline-fn (:credentials @timeline-state)))
 
 ;; fetch nytimes' twitter timeline and print the head entry's status text
 (-> (timeline "nytimes") first :text println)
