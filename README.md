@@ -9,7 +9,7 @@ Authentification is required. Refer to the [documentation](https://dev.twitter.c
 To include Gezwitscher in your project, add the following to your project.clj dependencies:
 
 ```clojure
-[gezwitscher "0.1.0"]
+[gezwitscher "0.1.1-SNAPSHOT"]
 ```
 
 ### Streaming

@@ -1,4 +1,4 @@
-(defproject gezwitscher "0.1.0"
+(defproject gezwitscher "0.1.1-SNAPSHOT"
 
   :description "Basic wrapper around the twitter4j framework"
 
@@ -13,5 +13,5 @@
                  [org.twitter4j/twitter4j-stream "4.0.1"]]
 
   :scm {:name "git"
-        :tag "2c7837a4edd2fe3d5fd935b5d3a79a0c38b77689"
+        :tag "6e0797a142049fe07d395db7b0dbdd4da3fa34fc"
         :url "https://github.com/kordano/gezwitscher.git"})
