@@ -4,7 +4,7 @@
 
 
 ;; example state, never reveal credentials in code, store the in env vars
-(def twitter-state
+(def test-state
   {:credentials {:consumer-key (or (System/getenv "TWITTER_API_KEY") "****")
                  :consumer-secret (or (System/getenv "TWITTER_API_SECRET") "****")
                  :access-token (or (System/getenv "TWITTER_ACCESS_TOKEN") "****")
@@ -13,10 +13,20 @@
    :follow [1460703391]
    :track ["clojure" "functional" "programming"]})
 
+(deftest test-user-timeline-count
+  (let [fetch-timeline (create-user-timeline-fn (:credentials test-state))]
+    (is (= (count (fetch-timeline "FAZ_NET")) 200))))
 
-(defn test-stream []
-  (let [stop-stream (start-filter-stream @twitter-state)]
-    (Thread/sleep 20000)
-    (stop-stream)))
+(deftest test-search-count
+  (let [search (create-search-fn (:credentials test-state))]
+    (is (= (count (search "NSA")) 100))))
 
-(def stop-stream (start-filter-stream twitter-state))
+
+(comment
+  (defn test-stream []
+    (let [stop-stream (start-filter-stream @twitter-state)]
+      (Thread/sleep 20000)
+      (stop-stream)))
+
+  (def stop-stream (start-filter-stream twitter-state))
+)
