@@ -49,10 +49,10 @@
 
 (defn start-filter-stream
   "Starts streaming, following given ids and tracking given keywords"
-  [credentials follow track handler]
-  (let [filter-query (FilterQuery. 0 (long-array follow) (into-array String track))
-        stream (get-twitter-stream-factory credentials)]
-    (.addListener stream (status-listener handler))
+  [stream-state]
+  (let [filter-query (FilterQuery. 0 (long-array (:follow stream-state)) (into-array String (:track stream-state)))
+        stream (get-twitter-stream-factory (:credentials stream-state))]
+    (.addListener stream (status-listener (:handler stream-state)))
     (.filter stream filter-query)
     (fn [] (do
             (.shutdown stream)
