@@ -1,6 +1,6 @@
 # Gezwitscher
 
-A basic wrapper around the java [twitter4j](http://twitter4j.org/en/index.html) framework for the [Twitter API](https://dev.twitter.com/docs) . Currently it only supports the [status/filter stream](https://dev.twitter.com/docs/api/1.1/post/statuses/filter), but in the future other API calls will be added.
+A basic wrapper around the java [twitter4j](http://twitter4j.org/en/index.html) framework for the [Twitter API](https://dev.twitter.com/docs). Be aware, this is very early alpha and still a work in progress. Many parts of the API could be changed, so use it with caution. Currently Gezwitscher only supports [status/filter stream](https://dev.twitter.com/docs/api/1.1/post/statuses/filter) from the Streaming API. Furthermore [search](https://dev.twitter.com/docs/api/1.1/get/search/tweets) and [user timeline](https://dev.twitter.com/docs/api/1.1/get/statuses/user_timeline) provided by the REST API. In the future more API calls from twitter4j are planned be added.
 
 Authentification is required. Refer to the [documentation](https://dev.twitter.com/docs/auth/using-oauth) for aquiring the credentials.
 
@@ -14,7 +14,7 @@ To include Gezwitscher in your project, add the following to your project.clj de
 
 ### Streaming
 
-Set the overall configuration
+Set the overall configuration: (I usually pack those into an atom)
 
 ```clojure
 (ns example.core
@@ -45,11 +45,14 @@ The keys should be set as follows:
 Start the streaming service
 ```clojure
 (def stop-stream 
-  (start-filter-stream @twitter-state))
+  (start-filter-stream 
+    (:follow @stream-state)
+    (:track @stream-state)
+    (:handler @stream-state)
+    (:credentials @stream-state)))
 ```
 
 The `start-filter-stream` function returns a stop-function for the twitter-stream if you want to control the streaming.
-
 
 
 ### Searching
