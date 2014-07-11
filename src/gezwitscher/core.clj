@@ -59,13 +59,13 @@
 
 
 (defn create-search-fn
-  "Creates a twitter search function, limited to 100 tweets"
+  "Creates a twitter search function given credentials and amount, limited to 100 tweets"
   ;;TODO workaround to obtain more tweets
-  [credentials]
+  [credentials counter]
   (let [twitter (get-twitter-factory credentials)]
     (fn [search-string]
       (let [query (Query. search-string)
-            result (do (.setCount query 240)
+            result (do (.setCount query counter)
                        (.search twitter query))]
         (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getTweets result))))))
 
