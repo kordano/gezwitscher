@@ -77,3 +77,10 @@
         page (Paging. (int 1) (int 300))]
     (fn [user]
       (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getUserTimeline twitter user page)))))
+
+
+(defn create-update-status-fn
+  [credentials]
+  (let [twitter (get-twitter-factory credentials)]
+    (fn [status-string]
+      (.updateStatus twitter status-string))))
