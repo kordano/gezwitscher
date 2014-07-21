@@ -105,7 +105,7 @@ And again set the credentials configuration
 
 ```clojure
 (ns example.core
-  (:require [gezwitscher.core :refer [create-user-timeline-fn]]))
+  (:require [gezwitscher.core :refer [create-update-status-fn]]))
 
 (def status-state
   (atom
