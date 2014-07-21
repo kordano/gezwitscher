@@ -22,14 +22,10 @@ Set the overall configuration: (I usually pack those into an atom)
 
 (def stream-state
   (atom
-   {:credentials {:consumer-key (or (System/getenv "TWITTER_API_KEY")
-                                    "****")
-                  :consumer-secret (or (System/getenv "TWITTER_API_SECRET")
-                                       "****")
-                  :access-token (or (System/getenv "TWITTER_ACCESS_TOKEN")
-                                    "****")
-                  :access-token-secret (or (System/getenv "TWITTER_ACCESS_TOKEN_SECRET")
-                                           "****")}
+   {:credentials {:consumer-key "****"
+                  :consumer-secret "****"
+                  :access-token "****"
+                  :access-token-secret "****"}
     :handler (fn [status] (println (:text status)))
     :follow [1460703391]
     :track ["clojure" "functional" "programming"]}))
@@ -65,16 +61,11 @@ Set the credentials configuration as above
 
 (def query-state
   (atom
-   {:credentials {:consumer-key (or (System/getenv "TWITTER_API_KEY")
-                                    "****")
-                  :consumer-secret (or (System/getenv "TWITTER_API_SECRET")
-                                       "****")
-                  :access-token (or (System/getenv "TWITTER_ACCESS_TOKEN")
-                                    "****")
-                  :access-token-secret (or (System/getenv "TWITTER_ACCESS_TOKEN_SECRET")
-                                           "****")}}))
+   {:credentials {:consumer-key "****"
+                  :consumer-secret "****"
+                  :access-token "****"
+                  :access-token-secret "****"}}))
 ```
-
 
 Create the search function and search for a keyword
 
@@ -94,16 +85,11 @@ Set the credentials configuration again as above
 
 (def timeline-state
   (atom
-   {:credentials {:consumer-key (or (System/getenv "TWITTER_API_KEY")
-                                    "****")
-                  :consumer-secret (or (System/getenv "TWITTER_API_SECRET")
-                                       "****")
-                  :access-token (or (System/getenv "TWITTER_ACCESS_TOKEN")
-                                    "****")
-                  :access-token-secret (or (System/getenv "TWITTER_ACCESS_TOKEN_SECRET")
-                                           "****")}}))
+   {:credentials {:consumer-key "****"
+                  :consumer-secret "****"
+                  :access-token "****"
+                  :access-token-secret "****"}}))
 ```
-
 
 Create the timeline function and fetch a user timeline
 
@@ -114,6 +100,29 @@ Create the timeline function and fetch a user timeline
 (-> (timeline "nytimes") first :text println)
 ```
 
+### Status Update
+And again set the credentials configuration
+
+```clojure
+(ns example.core
+  (:require [gezwitscher.core :refer [create-user-timeline-fn]]))
+
+(def status-state
+  (atom
+   {:credentials {:consumer-key "****"
+                  :consumer-secret "****"
+                  :access-token "****"
+                  :access-token-secret "****"}}))
+```
+
+Create the status update-function and post a new status
+
+```clojure
+(def update-status (create-update-status-fn (:credentials @status-state)))
+
+;; post the new status
+(update-status "Try out https://topiq.es")
+```
 
 
 ## License
