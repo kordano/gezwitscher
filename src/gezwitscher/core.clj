@@ -58,8 +58,8 @@
             (println "Streaming stopped!")))))
 
 
-(defn create-search-fn
-  "Creates a twitter search function given credentials and amount, limited to 100 tweets"
+(defn make-searcher
+  "Creates a twitter search function given credentials and amount, limited to 100 tweets. Returned function requires a keyword as parameter."
   ;;TODO workaround to obtain more tweets
   [credentials counter]
   (let [twitter (get-twitter-factory credentials)]
@@ -70,8 +70,8 @@
         (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getTweets result))))))
 
 
-(defn create-user-timeline-fn
-  "Creates a function for twitter timeline fetches, limited to 200 tweets"
+(defn make-timeliner
+  "Creates a function for twitter timeline fetches, limited to 200 tweets. Returned function requires a user as parameter."
   [credentials]
   (let [twitter (get-twitter-factory credentials)
         page (Paging. (int 1) (int 300))]
@@ -79,7 +79,8 @@
       (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getUserTimeline twitter user page)))))
 
 
-(defn create-update-status-fn
+(defn make-status-updater
+  "Creates a function that allows status updates using the current account. Returned function requires a text-string as parameter."
   [credentials]
   (let [twitter (get-twitter-factory credentials)]
     (fn [status-string]
