@@ -1,5 +1,6 @@
 (ns gezwitscher.core
-  (:require [clojure.data.json :as json])
+  (:require [clojure.data.json :as json]
+            [clojure.core.async :refer [chan put! <! go go-loop]])
   (:import [twitter4j StatusListener TwitterStream TwitterStreamFactory FilterQuery Query TwitterFactory Paging]
            [twitter4j.conf ConfigurationBuilder Configuration]
            [twitter4j.json DataObjectFactory]))
@@ -21,11 +22,11 @@
 
 (defn- status-listener
   "Stream handler, applies given function to newly retrieved status"
-  [func]
+  [status-ch]
   (proxy [StatusListener] []
     (onStatus [^twitter4j.Status status]
       (let [parsed-status (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
-        (func parsed-status)))
+        (put! status-ch parsed-status)))
     (onException [^java.lang.Exception e] (.printStackTrace e))
     (onDeletionNotice [^twitter4j.StatusDeletionNotice statusDeletionNotice] ())
     (onScrubGeo [userId upToStatusId] ())
@@ -48,14 +49,15 @@
 
 (defn start-filter-stream
   "Starts streaming, following given ids, tracking given keywords, handling incoming tweets with provided handler function"
-  [follow track handler credentials]
-  (let [filter-query (FilterQuery. 0 (long-array follow) (into-array String track))
+  [credentials & params]
+  (let [options (apply hash-map params)
+        filter-query (FilterQuery. 0 (long-array (:follow options)) (into-array String (:track options)))
+        status-chan (chan)
         stream (get-twitter-stream-factory credentials)]
-    (.addListener stream (status-listener handler))
+    (.addListener stream (status-listener status-chan))
     (.filter stream filter-query)
-    (fn [] (do
-            (.shutdown stream)
-            (println "Streaming stopped!")))))
+    {:stop-fn (fn [] (.shutdown stream))
+     :status-chan status-chan}))
 
 
 (defn make-searcher
