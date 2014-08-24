@@ -87,3 +87,26 @@
   (let [twitter (get-twitter-factory credentials)]
     (fn [status-string]
       (.updateStatus twitter status-string))))
+
+
+
+(comment
+
+  (def creds (-> "resources/credentials.edn"
+                 slurp
+                 read-string))
+
+  (def track ["@FAZ_NET" "@tagesschau" "@dpa" "@SZ" "@SPIEGELONLINE" "@BILD" "@DerWesten" "@ntvde" "@tazgezwitscher" "@welt" "@ZDFheute" "@N24_de" "@sternde" "@focusonline"])
+
+  (def follow [114508061 18016521 5734902 40227292 2834511 9204502 15071293 19232587 15243812 8720562 1101354170 15738602 18774524 5494392])
+
+  (let [stream (start-filter-stream creds :track track :follow follow)]
+    (def stop-strean (:stop-fn stream))
+    (go-loop [ch (:status-chan stream)]
+      (let [status (<! ch)]
+        (println (:text status))
+        (recur ch))))
+
+  (stop-stream)
+
+)
