@@ -133,7 +133,9 @@
     :unrelated))
 
 
-(defn zwitscher [credentials]
+(defn gezwitscher
+  "Initializes the application and dispatches incoming requests"
+  [credentials]
   (let [in (chan)
         out (chan)
         stream-ch (chan)
@@ -158,43 +160,3 @@
     (sub p :unrelated out)
 
     [in out]))
-
-
-(comment
-
-  (def track ["@FAZ_NET" "@tagesschau" "@dpa" "@SZ" "@SPIEGELONLINE" "@BILD" "@DerWesten" "@ntvde" "@tazgezwitscher" "@welt" "@ZDFheute" "@N24_de" "@sternde" "@focusonline"])
-
-  (def follow [114508061 18016521 5734902 40227292 2834511 9204502 15071293 19232587 15243812 8720562 1101354170 15738602 18774524 5494392])
-
-  (def creds (-> "resources/credentials.edn"
-                 slurp
-                 read-string))
-
-  (def z (zwitscher creds))
-
-  (go
-    (let [[in out] z]
-      (>! in {:topic :search :text "kollektiv"})
-      (println "OUT" (<! out))
-      (>! in {:topic :status-update :text "kollektiv"})
-      (println "OUT" (<! out))
-      (>! in {:topic :timeline :user 5734902})
-      (println "OUT" (<! out))
-      (>! in {:topic :start-stream :track track :follow follow})
-      (let [output (<! out)]
-        (println "OUT" output)
-        (go-loop [status (<! (:status-ch output))]
-          (when status
-            (println (:text status))
-            (recur (<! (:status-ch output))))))
-      (<! (timeout 30000))
-      (>! in {:topic :stop-stream})
-      (println (<! out))
-      ))
-
-
-  (println "\n")
-
-
-
-  )
