@@ -1,6 +1,6 @@
 (ns gezwitscher.core
   (:require [clojure.data.json :as json]
-            [clojure.core.async :refer [chan put! <! go go-loop]])
+            [clojure.core.async :refer [pub sub chan put! >! <! go go-loop timeout]])
   (:import [twitter4j StatusListener TwitterStream TwitterStreamFactory FilterQuery Query TwitterFactory Paging]
            [twitter4j.conf ConfigurationBuilder Configuration]
            [twitter4j.json DataObjectFactory]))
@@ -49,64 +49,152 @@
 
 (defn start-filter-stream
   "Starts streaming, following given ids, tracking given keywords, handling incoming tweets with provided handler function"
-  [credentials & params]
+  [stream & params]
   (let [options (apply hash-map params)
         filter-query (FilterQuery. 0 (long-array (:follow options)) (into-array String (:track options)))
-        status-chan (chan)
-        stream (get-twitter-stream-factory credentials)]
+        status-chan (chan)]
     (.addListener stream (status-listener status-chan))
     (.filter stream filter-query)
-    {:stop-fn (fn [] (.shutdown stream))
-     :status-chan status-chan}))
+    status-chan))
 
 
-(defn make-searcher
+(defn- make-searcher
   "Creates a twitter search function given credentials and amount, limited to 100 tweets. Returned function requires a keyword as parameter."
   ;;TODO workaround to obtain more tweets
-  [credentials counter]
-  (let [twitter (get-twitter-factory credentials)]
-    (fn [search-string]
-      (let [query (Query. search-string)
-            result (do (.setCount query counter)
-                       (.search twitter query))]
-        (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getTweets result))))))
+  [twitter]
+  (fn [search-string]
+    (let [query (Query. search-string)
+          result (do (.setCount query 100)
+                     (.search twitter query))]
+      (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getTweets result)))))
 
 
-(defn make-timeliner
+(defn- make-timeliner
   "Creates a function for twitter timeline fetches, limited to 200 tweets. Returned function requires a user as parameter."
-  [credentials]
-  (let [twitter (get-twitter-factory credentials)
-        page (Paging. (int 1) (int 300))]
+  [twitter]
+  (let [page (Paging. (int 1) (int 300))]
     (fn [user]
       (map #(json/read-str (DataObjectFactory/getRawJSON %) :key-fn keyword) (.getUserTimeline twitter user page)))))
 
 
-(defn make-status-updater
+(defn- make-status-updater
   "Creates a function that allows status updates using the current account. Returned function requires a text-string as parameter."
-  [credentials]
-  (let [twitter (get-twitter-factory credentials)]
-    (fn [status-string]
-      (.updateStatus twitter status-string))))
+  [twitter]
+  (fn [status-string]
+ (json/read-str (DataObjectFactory/getRawJSON (.updateStatus twitter status-string)) :key-fn keyword)))
 
+
+(defn- timelined [twitter timeline-ch out]
+  (let [timeline (make-timeliner twitter)]
+    (go-loop [{:keys [user] :as t} (<! timeline-ch)]
+      (when t
+        (>! out (assoc t :result (vec (timeline user))))
+        (recur (<! timeline-ch))))))
+
+
+(defn- status-updated [twitter status-update-ch out]
+  (let [update-status (make-status-updater twitter)]
+    (go-loop [{:keys [text] :as s} (<! status-update-ch)]
+      (when s
+        (>! out (assoc s :status (update-status text)))
+        (recur (<! status-update-ch))))))
+
+
+(defn- searched [twitter search-ch out]
+  (let [search (make-searcher twitter)]
+    (go-loop [{:keys [text] :as s} (<! search-ch)]
+      (when s
+        (>! out (assoc s :result (vec (search text))))
+        (recur (<! search-ch))))))
+
+
+(defn- stream-started [stream stream-ch out]
+  (let [stop-stream (fn [] (.shutdown stream))]
+    (go-loop [{:keys [track follow topic] :as s} (<! stream-ch)]
+      (when s
+        (println s)
+        (case topic
+          :stop-stream (do
+                         (.shutdown stream)
+                         (>! out {:stream-stopped true}))
+          :start-stream (>! out (assoc s :status-ch (start-filter-stream stream :track track :follow follow)))
+          :unrelated)
+        (recur (<! stream-ch))))))
+
+
+(defn- in-dispatch [{:keys [topic]}]
+  (println "IN" topic)
+  (case topic
+    :stop-stream :stream
+    :start-stream :stream
+    :search :search
+    :timeline :timeline
+    :status-update :status-update
+    :unrelated))
+
+
+(defn zwitscher [credentials]
+  (let [in (chan)
+        out (chan)
+        stream-ch (chan)
+        search-ch (chan)
+        timeline-ch (chan)
+        status-update-ch (chan)
+        p (pub in in-dispatch)
+        twitter (get-twitter-factory credentials)
+        stream (get-twitter-stream-factory credentials)]
+    (sub p :stream stream-ch)
+    (stream-started stream stream-ch out)
+
+    (sub p :search search-ch)
+    (searched twitter search-ch out)
+
+    (sub p :timeline timeline-ch)
+    (timelined twitter timeline-ch out)
+
+    (sub p :status-update status-update-ch)
+    (status-updated twitter status-update-ch out)
+
+    (sub p :unrelated out)
+
+    [in out]))
 
 
 (comment
-
-  (def creds (-> "resources/credentials.edn"
-                 slurp
-                 read-string))
 
   (def track ["@FAZ_NET" "@tagesschau" "@dpa" "@SZ" "@SPIEGELONLINE" "@BILD" "@DerWesten" "@ntvde" "@tazgezwitscher" "@welt" "@ZDFheute" "@N24_de" "@sternde" "@focusonline"])
 
   (def follow [114508061 18016521 5734902 40227292 2834511 9204502 15071293 19232587 15243812 8720562 1101354170 15738602 18774524 5494392])
 
-  (let [stream (start-filter-stream creds :track track :follow follow)]
-    (def stop-strean (:stop-fn stream))
-    (go-loop [ch (:status-chan stream)]
-      (let [status (<! ch)]
-        (println (:text status))
-        (recur ch))))
+  (def creds (-> "resources/credentials.edn"
+                 slurp
+                 read-string))
 
-  (stop-stream)
+  (def z (zwitscher creds))
 
-)
+  (go
+    (let [[in out] z]
+      (>! in {:topic :search :text "kollektiv"})
+      (println "OUT" (<! out))
+      (>! in {:topic :status-update :text "kollektiv"})
+      (println "OUT" (<! out))
+      (>! in {:topic :timeline :user 5734902})
+      (println "OUT" (<! out))
+      (>! in {:topic :start-stream :track track :follow follow})
+      (let [output (<! out)]
+        (println "OUT" output)
+        (go-loop [status (<! (:status-ch output))]
+          (when status
+            (println (:text status))
+            (recur (<! (:status-ch output))))))
+      (<! (timeout 30000))
+      (>! in {:topic :stop-stream})
+      (println (<! out))
+      ))
+
+
+  (println "\n")
+
+
+
+  )
