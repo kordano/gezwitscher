@@ -20,13 +20,26 @@
     (.build cb)))
 
 
-(defn- status-listener
+(defn- new-status-listener
   "Stream handler, applies given function to newly retrieved status"
   [status-ch]
   (proxy [StatusListener] []
     (onStatus [^twitter4j.Status status]
       (let [parsed-status (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
         (put! status-ch parsed-status)))
+    (onException [^java.lang.Exception e] (.printStackTrace e))
+    (onDeletionNotice [^twitter4j.StatusDeletionNotice statusDeletionNotice] ())
+    (onScrubGeo [userId upToStatusId] ())
+    (onTrackLimitationNotice [numberOfLimitedStatuses] ())))
+
+
+(defn- status-listener
+  "Stream handler, applies given function to newly retrieved status"
+  [func]
+  (proxy [StatusListener] []
+    (onStatus [^twitter4j.Status status]
+      (let [parsed-status (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
+        (func parsed-status)))
     (onException [^java.lang.Exception e] (.printStackTrace e))
     (onDeletionNotice [^twitter4j.StatusDeletionNotice statusDeletionNotice] ())
     (onScrubGeo [userId upToStatusId] ())
