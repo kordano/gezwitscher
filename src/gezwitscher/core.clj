@@ -47,19 +47,16 @@
     (.getInstance factory)))
 
 
-
 (defn start-filter-stream
   "Starts streaming, following given ids, tracking given keywords, handling incoming tweets with provided handler function"
-  [credentials & params]
-  (let [options (apply hash-map params)
-        filter-query (FilterQuery. 0 (long-array (:follow options)) (into-array String (:track options)))
-        status-chan (chan)
+  [follow track handler credentials]
+  (let [filter-query (FilterQuery. 0 (long-array follow) (into-array String track))
         stream (get-twitter-stream-factory credentials)]
-    (.addListener stream (status-listener status-chan))
+    (.addListener stream (status-listener handler))
     (.filter stream filter-query)
-    {:stop-fn (fn [] (.shutdown stream))
-     :status-chan status-chan}))
-
+    (fn [] (do
+            (.shutdown stream)
+            (println "Streaming stopped!")))))
 
 
 (defn make-filter-streamer
