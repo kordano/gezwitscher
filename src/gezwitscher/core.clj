@@ -78,7 +78,7 @@
   (let [options (apply hash-map params)
         filter-query (FilterQuery. 0 (long-array (:follow options)) (into-array String (:track options)))
         status-chan (chan)]
-    (.addListener stream (status-listener status-chan))
+    (.addListener stream (new-status-listener status-chan))
     (.filter stream filter-query)
     status-chan))
 
@@ -185,3 +185,48 @@
     (sub p :unrelated out)
 
     [in out]))
+
+(comment
+  (def track ["@FAZ_NET" "www.faz.net"
+              "@tagesschau" "www.tagesschau.de"
+              "@dpa"
+              "@SZ" "www.sz.de" "http://sz.de" "www.sueddeutsche.de"
+              "@SPIEGELONLINE" "http://spon.de" "www.spiegel.de"
+              "@BILD" "www.bild.de"
+              "@DerWesten" "derwesten.de"
+              "@ntvde" "www.n-tv.de" "n-tv.io"
+              "@tazgezwitscher" "www.taz.de"
+              "@welt" "on.welt.de" "www.welt.de"
+              "@ZDFheute" "www.heute.de"
+              "@N24_de" "www.n24.de" "l.n24.de"
+              "@sternde" "stern.de"
+              "@focusonline" "www.focus.de"
+              ])
+
+  (def follow [114508061 18016521 5734902 40227292 2834511 9204502 15071293 19232587 15243812 8720562 1101354170 15738602 18774524 5494392])
+
+  (def creds (-> "resources/credentials.edn"
+                 slurp
+                 read-string))
+
+  (def z (gezwitscher creds))
+
+  (go
+    (let [[in out] z]
+      (>! in {:topic :start-stream :track track :follow follow})
+      (let [output (<! out)]
+        (println "OUT" output)
+        (go-loop [status (<! (:status-ch output))]
+          (when status
+            (println (str (-> status :user :screen_name) " says '" (:text status) "'"))
+            (recur (<! (:status-ch output))))))))
+
+  (go
+    (>! (first z) {:topic :stop-stream})
+    (println (<! (second z))))
+
+
+  (println "\n")
+
+
+  )
