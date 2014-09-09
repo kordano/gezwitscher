@@ -4,6 +4,8 @@ A basic wrapper around the java [twitter4j](http://twitter4j.org/en/index.html) 
 
 Authentification is required. Refer to the [documentation](https://dev.twitter.com/docs/auth/using-oauth) for aquiring the credentials.
 
+As collector using articles published on Twitter [ceres][https://github.com/kordano/ceres] is using this library.
+
 ## Usage
 
 To include Gezwitscher in your project, add the following to your project.clj dependencies:
