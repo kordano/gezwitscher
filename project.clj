@@ -10,6 +10,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [org.clojure/data.json "0.2.5"]
+                 [midje "1.6.3"]
                  [org.twitter4j/twitter4j-core "4.0.2"]
                  [org.twitter4j/twitter4j-stream "4.0.2"]]
 
