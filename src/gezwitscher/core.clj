@@ -67,9 +67,7 @@
         stream (get-twitter-stream-factory credentials)]
     (.addListener stream (status-listener handler))
     (.filter stream filter-query)
-    (fn [] (do
-            (.shutdown stream)
-            (println "Streaming stopped!")))))
+    (fn [] (.shutdown stream))))
 
 
 (defn make-filter-streamer
@@ -109,52 +107,63 @@
  (json/read-str (DataObjectFactory/getRawJSON (.updateStatus twitter status-string)) :key-fn keyword)))
 
 
-(defn- timelined [twitter timeline-ch out]
+
+
+(defn- timelined
+  "Answers to a timeline request"
+  [twitter timeline-ch out]
   (let [timeline (make-timeliner twitter)]
     (go-loop [{:keys [user] :as t} (<! timeline-ch)]
       (when t
-        (>! out (assoc t :result (vec (timeline user))))
+        (>! out {:result (vec (timeline user)) :topic (:topic t)})
         (recur (<! timeline-ch))))))
 
 
-(defn- status-updated [twitter status-update-ch out]
+(defn- status-updated
+  "Answers to a update-status request"
+  [twitter status-update-ch out]
   (let [update-status (make-status-updater twitter)]
     (go-loop [{:keys [text] :as s} (<! status-update-ch)]
       (when s
-        (>! out (assoc s :status (update-status text)))
+        (>! out {:status (update-status text) :topic (:topic s)})
         (recur (<! status-update-ch))))))
 
 
-(defn- searched [twitter search-ch out]
+(defn- searched
+  "Answers to a search request"
+  [twitter search-ch out]
   (let [search (make-searcher twitter)]
     (go-loop [{:keys [text] :as s} (<! search-ch)]
       (when s
-        (>! out (assoc s :result (vec (search text))))
+        (>! out {:result (vec (search text)) :topic (:topic s)})
         (recur (<! search-ch))))))
 
 
-(defn- stream-started [stream stream-ch out]
+(defn- stream-started
+  "Answers to a start-stream and stop-stream request"
+  [stream stream-ch out]
   (let [stop-stream (fn [] (.shutdown stream))]
     (go-loop [{:keys [track follow topic] :as s} (<! stream-ch)]
       (when s
-        (println s)
         (case topic
           :stop-stream (do
                          (.shutdown stream)
-                         (>! out {:stream-stopped true}))
-          :start-stream (>! out (assoc s :status-ch (make-filter-streamer stream :track track :follow follow)))
+                         (>! out :stopped))
+          :start-stream (>! out {:status-ch (make-filter-streamer stream :track track :follow follow)
+                                 :topic (:topic s)})
           :unrelated)
         (recur (<! stream-ch))))))
 
 
-(defn- in-dispatch [{:keys [topic]}]
-  (println "IN" topic)
+(defn- in-dispatch
+  "Dispatches incoming requests"
+  [{:keys [topic]}]
   (case topic
     :stop-stream :stream
     :start-stream :stream
     :search :search
     :timeline :timeline
-    :status-update :status-update
+    :update-status :update-status
     :unrelated))
 
 
@@ -179,54 +188,9 @@
     (sub p :timeline timeline-ch)
     (timelined twitter timeline-ch out)
 
-    (sub p :status-update status-update-ch)
+    (sub p :update-status status-update-ch)
     (status-updated twitter status-update-ch out)
 
     (sub p :unrelated out)
 
     [in out]))
-
-(comment
-  (def track ["@FAZ_NET" "www.faz.net"
-              "@tagesschau" "www.tagesschau.de"
-              "@dpa"
-              "@SZ" "www.sz.de" "http://sz.de" "www.sueddeutsche.de"
-              "@SPIEGELONLINE" "http://spon.de" "www.spiegel.de"
-              "@BILD" "www.bild.de"
-              "@DerWesten" "derwesten.de"
-              "@ntvde" "www.n-tv.de" "n-tv.io"
-              "@tazgezwitscher" "www.taz.de"
-              "@welt" "on.welt.de" "www.welt.de"
-              "@ZDFheute" "www.heute.de"
-              "@N24_de" "www.n24.de" "l.n24.de"
-              "@sternde" "stern.de"
-              "@focusonline" "www.focus.de"
-              ])
-
-  (def follow [114508061 18016521 5734902 40227292 2834511 9204502 15071293 19232587 15243812 8720562 1101354170 15738602 18774524 5494392])
-
-  (def creds (-> "resources/credentials.edn"
-                 slurp
-                 read-string))
-
-  (def z (gezwitscher creds))
-
-  (go
-    (let [[in out] z]
-      (>! in {:topic :start-stream :track track :follow follow})
-      (let [output (<! out)]
-        (println "OUT" output)
-        (go-loop [status (<! (:status-ch output))]
-          (when status
-            (println (str (-> status :user :screen_name) " says '" (:text status) "'"))
-            (recur (<! (:status-ch output))))))))
-
-  (go
-    (>! (first z) {:topic :stop-stream})
-    (println (<! (second z))))
-
-
-  (println "\n")
-
-
-  )
