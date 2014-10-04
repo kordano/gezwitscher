@@ -107,8 +107,6 @@
  (json/read-str (DataObjectFactory/getRawJSON (.updateStatus twitter status-string)) :key-fn keyword)))
 
 
-
-
 (defn- timelined
   "Answers to a timeline request"
   [twitter timeline-ch out]
