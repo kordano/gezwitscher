@@ -22,25 +22,25 @@
 
 (defn- new-status-listener
   "Stream handler, applies given function to newly retrieved status"
-  [status-ch]
+  [status-ch error-ch]
   (proxy [StatusListener] []
     (onStatus [^twitter4j.Status status]
       (let [parsed-status (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
         (put! status-ch parsed-status)))
-    (onException [^java.lang.Exception e] (.printStackTrace e))
-    (onDeletionNotice [^twitter4j.StatusDeletionNotice statusDeletionNotice] ())
+    (onException [^java.lang.Exception e] (put! error-ch {:error e :data (.getStackTrace e)}))
+    (onDeletionNotice [^twitter4j.StatusDeletionNotice deletion-notice] (put! status-ch deletion-notice))
     (onScrubGeo [userId upToStatusId] ())
-    (onTrackLimitationNotice [numberOfLimitedStatuses] ())))
+    (onTrackLimitationNotice [numberOfLimitedStatuses number-of-limited-statuses] (put! status-ch number-of-limited-statuses ))))
 
 
 (defn- status-listener
   "Stream handler, applies given function to newly retrieved status"
-  [func]
+  [func error-func]
   (proxy [StatusListener] []
     (onStatus [^twitter4j.Status status]
       (let [parsed-status (json/read-str (DataObjectFactory/getRawJSON status) :key-fn keyword)]
         (func parsed-status)))
-    (onException [^java.lang.Exception e] (.printStackTrace e))
+    (onException [^java.lang.Exception e] (error-func e))
     (onDeletionNotice [^twitter4j.StatusDeletionNotice statusDeletionNotice] ())
     (onScrubGeo [userId upToStatusId] ())
     (onTrackLimitationNotice [numberOfLimitedStatuses] ())))
@@ -62,10 +62,10 @@
 
 (defn start-filter-stream
   "Starts streaming, following given ids, tracking given keywords, handling incoming tweets with provided handler function"
-  [follow track handler credentials]
+  [follow track handler credentials error-handler]
   (let [filter-query (FilterQuery. 0 (long-array follow) (into-array String track))
         stream (get-twitter-stream-factory credentials)]
-    (.addListener stream (status-listener handler))
+    (.addListener stream (status-listener handler error-handler))
     (.filter stream filter-query)
     (fn [] (.shutdown stream))))
 
@@ -75,8 +75,9 @@
   [stream & params]
   (let [options (apply hash-map params)
         filter-query (FilterQuery. 0 (long-array (:follow options)) (into-array String (:track options)))
-        status-chan (chan)]
-    (.addListener stream (new-status-listener status-chan))
+        status-chan (chan)
+        error-chan (chan)]
+    (.addListener stream (new-status-listener status-chan error-chan))
     (.filter stream filter-query)
     status-chan))
 
