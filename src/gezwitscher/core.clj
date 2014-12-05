@@ -193,3 +193,18 @@
     (sub p :unrelated out)
 
     [in out]))
+
+(comment
+    (initialize server-state "opt/test-config.edn")
+
+    (def stop-stream
+      (let [{{:keys [follow track credentials]} :app} @server-state]
+        (start-filter-stream follow track
+                             (fn [s]
+                               (let [{:keys [text user]} (store-raw-tweet s)]
+                                 (debug (str "@" (:screen_name user) ": " text))))
+                             (fn [e] (debug e))
+                           credentials)))
+
+
+  )
